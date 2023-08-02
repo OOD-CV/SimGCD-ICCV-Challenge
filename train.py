@@ -10,6 +10,8 @@ from tqdm import tqdm
 
 from data.augmentations import get_transform
 from data.get_datasets import get_datasets, get_class_splits
+from SSB.get_datasets.get_gcd_datasets import get_gcd_datasets
+from SSB.utils import load_class_splits
 
 from util.general_utils import AverageMeter, init_experiment
 from util.cluster_and_log_utils import log_accs_from_preds
@@ -209,10 +211,12 @@ if __name__ == "__main__":
     # ----------------------
     args = parser.parse_args()
     device = torch.device('cuda:0')
-    args = get_class_splits(args)
+    # args = get_class_splits(args)
 
-    args.num_labeled_classes = len(args.train_classes)
-    args.num_unlabeled_classes = len(args.unlabeled_classes)
+    # args.num_labeled_classes = len(args.train_classes)
+    # args.num_unlabeled_classes = len(args.unlabeled_classes)
+    if 'imagenet' in args.dataset_name:
+        args.mlp_out_dim = 1000
 
     init_experiment(args, runner_name=['simgcd'])
     args.logger.info(f'Using evaluation function {args.eval_funcs[0]} to print results')
@@ -235,7 +239,14 @@ if __name__ == "__main__":
     args.image_size = 224
     args.feat_dim = 768
     args.num_mlp_layers = 3
-    args.mlp_out_dim = args.num_labeled_classes + args.num_unlabeled_classes
+    # args.mlp_out_dim = args.num_labeled_classes + args.num_unlabeled_classes
+    # import ipdb; ipdb.set_trace()
+    class_splits = load_class_splits(args.dataset_name)
+    args.train_classes = class_splits['known_classes']
+    args.mlp_out_dim = len(class_splits['known_classes']) \
+                     + len(class_splits['unknown_classes']['Easy']) \
+                     + len(class_splits['unknown_classes']['Medium']) \
+                     + len(class_splits['unknown_classes']['Hard'])
 
     # ----------------------
     # HOW MUCH OF BASE MODEL TO FINETUNE
@@ -261,10 +272,14 @@ if __name__ == "__main__":
     # --------------------
     # DATASETS
     # --------------------
-    train_dataset, test_dataset, unlabelled_train_examples_test, datasets = get_datasets(args.dataset_name,
-                                                                                         train_transform,
-                                                                                         test_transform,
-                                                                                         args)
+    # train_dataset, test_dataset, unlabelled_train_examples_test, datasets = get_datasets(args.dataset_name,
+    #                                                                                      train_transform,
+    #                                                                                      test_transform,
+    #                                                                                      args)
+    # import ipdb; ipdb.set_trace()
+    train_dataset, test_dataset, unlabelled_train_examples_test, datasets = get_gcd_datasets(args.dataset_name, 
+                                                                                            train_transform,
+                                                                                            test_transform,)
 
     # --------------------
     # SAMPLER
